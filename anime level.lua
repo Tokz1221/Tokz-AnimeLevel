@@ -297,12 +297,12 @@ task.spawn(function()
     while true do
         if AutoStarEnabled and SelectedStar then
             pcall(function()
-                HatchRemote:InvokeServer(SelectedStar, 1)
+                HatchRemote:InvokeServer(SelectedStar, 8)
             end)
 
-            task.wait(0.2) -- adjust speed if needed
+            task.wait(0.5) -- adjust speed if needed
         else
-            task.wait(0.3)
+            task.wait(0.5)
         end
     end
 end)
@@ -606,6 +606,101 @@ task.spawn(function()
     end
 end)
 
+-- ===================== UPGRADE TAB =====================
+local UpgradeTab = Window:CreateTab("Upgrade", 4483362458)
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StatRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("LaboratoryUpgrade")
+
+-- Toggles
+local AutoEnergy    = false
+local AutoDamage    = false
+local AutoGachaRoll = false
+local AutoStarLuck  = false
+local AutoPetEquips = false
+local AutoStarOpen  = false
+
+-- ===================== TOGGLES =====================
+UpgradeTab:CreateToggle({
+    Name = "Auto Energy",
+    CurrentValue = false,
+    Flag = "AutoEnergy",
+    Callback = function(value)
+        AutoEnergy = value
+    end,
+})
+
+UpgradeTab:CreateToggle({
+    Name = "Auto Damage",
+    CurrentValue = false,
+    Flag = "AutoDamage",
+    Callback = function(value)
+        AutoDamage = value
+    end,
+})
+
+UpgradeTab:CreateToggle({
+    Name = "Auto Gacha Roll",
+    CurrentValue = false,
+    Flag = "AutoGachaRoll",
+    Callback = function(value)
+        AutoGachaRoll = value
+    end,
+})
+
+UpgradeTab:CreateToggle({
+    Name = "Auto Star Luck",
+    CurrentValue = false,
+    Flag = "AutoStarLuck",
+    Callback = function(value)
+        AutoStarLuck = value
+    end,
+})
+
+UpgradeTab:CreateToggle({
+    Name = "Auto Pet Equips",
+    CurrentValue = false,
+    Flag = "AutoPetEquips",
+    Callback = function(value)
+        AutoPetEquips = value
+    end,
+})
+
+UpgradeTab:CreateToggle({
+    Name = "Auto Star Open",
+    CurrentValue = false,
+    Flag = "AutoStarOpen",
+    Callback = function(value)
+        AutoStarOpen = value
+    end,
+})
+
+-- ===================== LOOP =====================
+task.spawn(function()
+    while true do
+        if AutoEnergy then
+            pcall(function() StatRemote:FireServer("Energy", 1) end)
+        end
+        if AutoDamage then
+            pcall(function() StatRemote:FireServer("Damage", 1) end)
+        end
+        if AutoGachaRoll then
+            pcall(function() StatRemote:FireServer("GachaRoll", 1) end)
+        end
+        if AutoStarLuck then
+            pcall(function() StatRemote:FireServer("Luck", 1) end)
+        end
+        if AutoPetEquips then
+            pcall(function() StatRemote:FireServer("PetEquips", 1) end)
+        end
+        if AutoStarOpen then
+            pcall(function() StatRemote:FireServer("StarOpen", 1) end)
+        end
+        
+        task.wait(0.7)
+    end
+end)
+
 -- ===================== TOWER RAID AUTO FARM =====================
 
 local TowerFolder = workspace:WaitForChild("TowerRaid"):WaitForChild("Raid1"):WaitForChild("Enemy")
@@ -697,3 +792,177 @@ task.spawn(function()
         task.wait(0.2)
     end
 end)
+
+-- ===================== AUTO WISTERIA RAID FULL SCRIPT =====================
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local OpenWisteriaRaid = Remotes:WaitForChild("OpenWisteriaRaid")
+local LeaveRaidRemote = Remotes:FindFirstChild("LeaveRaid") or Remotes:FindFirstChild("ExitRaid")
+
+local AutoWisteriaRaid = false
+local LeaveAtWave = 100
+
+-- ===================== UI =====================
+AutoFarm:CreateSection("🚀 Auto Wisteria Raid")
+
+AutoFarm:CreateToggle({
+    Name = "Auto Wisteria Raid (Join + Farm)",
+    CurrentValue = false,
+    Flag = "AutoWisteriaRaid",
+    Callback = function(value)
+        AutoWisteriaRaid = value
+        Rayfield:Notify({
+            Title = "Auto Raid",
+            Content = value and "✅ Auto Wisteria Raid + Farm ON" or "❌ Auto Wisteria Raid OFF",
+            Duration = 3
+        })
+    end,
+})
+
+-- Input TextBox untuk Leave at Wave (bisa diketik)
+AutoFarm:CreateInput({
+    Name = "Leave at Wave",
+    PlaceholderText = "Masukkan nomor wave (contoh: 100)",
+    CurrentValue = "100",
+    Flag = "LeaveWaveInput",
+    Callback = function(value)
+        local num = tonumber(value)
+        if num then
+            LeaveAtWave = num
+            Rayfield:Notify({
+                Title = "Leave Wave",
+                Content = "Leave at wave diubah menjadi: " .. num,
+                Duration = 3
+            })
+        else
+            Rayfield:Notify({
+                Title = "Error",
+                Content = "Masukkan angka yang valid!",
+                Duration = 3
+            })
+        end
+    end,
+})
+
+-- ===================== JOIN RAID + AUTO LEAVE =====================
+task.spawn(function()
+    while true do
+        if AutoWisteriaRaid then
+            
+            -- Join / Open Raid
+            pcall(function()
+                OpenWisteriaRaid:FireServer()
+            end)
+
+            -- Cek wave & auto leave
+            local currentWave = getCurrentWave()
+            if currentWave >= LeaveAtWave and currentWave >= 20 then
+                pcall(function()
+                    if LeaveRaidRemote then
+                        LeaveRaidRemote:FireServer()
+                    end
+                end)
+                
+                Rayfield:Notify({
+                    Title = "Auto Raid",
+                    Content = "Wave " .. currentWave .. " tercapai → Keluar Raid",
+                    Duration = 5
+                })
+            end
+        end
+        
+        task.wait(2.2)
+    end
+end)
+
+-- ===================== AUTO FARM INSIDE RAID =====================
+local WisteriaFolder = workspace:WaitForChild("WisteriaRaid"):WaitForChild("Raid1"):WaitForChild("Enemy")
+
+local function getWisteriaEnemies()
+    local list = {}
+    for _, enemy in ipairs(WisteriaFolder:GetChildren()) do
+        if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") then
+            table.insert(list, enemy)
+        end
+    end
+    return list
+end
+
+local function teleportToRaidEnemy(enemy)
+    local char = game.Players.LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local hrp = char.HumanoidRootPart
+    local target = enemy:FindFirstChild("HumanoidRootPart") or enemy.PrimaryPart or enemy:FindFirstChild("Head")
+    if target then
+        hrp.CFrame = target.CFrame * CFrame.new(0, 3, -4)  -- sedikit di atas & depan
+    end
+end
+
+task.spawn(function()
+    while true do
+        if AutoWisteriaRaid then
+            local enemies = getWisteriaEnemies()
+            for _, enemy in ipairs(enemies) do
+                if not AutoWisteriaRaid then break end
+                if not enemy or not enemy.Parent then continue end
+                
+                teleportToRaidEnemy(enemy)
+                
+                -- Tunggu sampai musuh mati
+                while AutoWisteriaRaid and enemy.Parent do
+                    local hp = 1
+                    local attr = enemy:GetAttribute("CurrentHP")
+                    if typeof(attr) == "string" then
+                        local _, val = string.match(attr, "([^;]+);([^;]+)")
+                        hp = tonumber(val) or 1
+                    elseif enemy:FindFirstChild("Humanoid") then
+                        hp = enemy.Humanoid.Health
+                    end
+                    
+                    if hp <= 0 then
+                        break
+                    end
+                    
+                    -- Auto Attack (bisa di-uncomment kalau perlu)
+                    -- game.ReplicatedStorage.Remotes.Clicked:FireServer()
+                    
+                    task.wait(0.12)
+                end
+                task.wait(0.15)
+            end
+        end
+        task.wait(0.25)
+    end
+end)
+
+-- ===================== WAVE DETECTION (VERSI LEBIH AKURAT) =====================
+function getCurrentWave()
+    local playerGui = game.Players.LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then return 0 end
+    
+    for _, v in ipairs(playerGui:GetDescendants()) do
+        if (v:IsA("TextLabel") or v:IsA("TextButton")) and v.Text then
+            local text = v.Text
+            
+            -- Cari pola yang paling umum di raid: "Wave 3", "Wave: 3", "3/50", dll
+            if text:lower():find("wave") or text:find("%d+/%d+") then
+                -- Ambil semua angka, prioritaskan yang kecil (wave saat ini biasanya < 100)
+                local numbers = {}
+                for num in text:gmatch("%d+") do
+                    table.insert(numbers, tonumber(num))
+                end
+                
+                if #numbers > 0 then
+                    -- Ambil angka terkecil yang masuk akal (bukan total wave besar)
+                    table.sort(numbers)
+                    local possibleWave = numbers[1]
+                    
+                    if possibleWave <= 300 and possibleWave > 0 then  -- batas aman
+                        return possibleWave
+                    end
+                end
+            end
+        end
+    end
+    return 0
+end
